@@ -6,41 +6,31 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * Appointment Response Factory - Smart appointment data transformation
- * Processes appointment data for optimal display and workflow
+ * Appointment Response Factory - Simplified for basic reminders
+ * Transforms appointment data for display purposes only
  */
 @Component
 @RequiredArgsConstructor
 public class AppointmentResponseFactory {
 
     /**
-     * Create appointment response with processed display data
+     * Create appointment response for simple reminders
      */
     public AppointmentResponse createResponse(Appointment appointment) {
         return AppointmentResponse.builder()
                 .apptId(appointment.getApptId())
-
-                // Customer info - processed for display
-                .customerId(appointment.getCustomer() != null ? appointment.getCustomer().getCustomerId() : null)
-                .customerName(appointment.getCustomer() != null ? appointment.getCustomer().getFullName()
-                        : "Unknown Customer")
-
-                // Service info - processed for display
-                .serviceId(appointment.getService() != null ? appointment.getService().getServiceId() : null)
-                .serviceName(appointment.getService() != null ? appointment.getService().getName() : "Unknown Service")
-
-                // Scheduling info
-                .startAt(appointment.getStartAt())
-                .endAt(appointment.getEndAt())
+                .leadId(appointment.getLeadId())
+                .customerId(appointment.getCustomerId())
+                .customerName(appointment.getCustomerName())
+                .customerPhone(appointment.getCustomerPhone())
+                .appointmentDateTime(appointment.getAppointmentDateTime())
                 .status(appointment.getStatus())
-
-                // Technician info - display name only for privacy
-                .technicianName(
-                        appointment.getTechnician() != null ? appointment.getTechnician().getFullName() : "Unassigned")
-
-                // Notes
                 .note(appointment.getNote())
-
+                .reminderSent(appointment.getReminderSent())
+                .confirmedAt(appointment.getConfirmedAt())
+                .cancelledReason(appointment.getCancelledReason())
+                .createdAt(appointment.getCreatedAt())
+                .updatedAt(appointment.getUpdatedAt())
                 .build();
     }
 
@@ -50,37 +40,33 @@ public class AppointmentResponseFactory {
     public AppointmentResponse createMinimalResponse(Appointment appointment) {
         return AppointmentResponse.builder()
                 .apptId(appointment.getApptId())
-                .customerName(
-                        appointment.getCustomer() != null ? maskCustomerName(appointment.getCustomer().getFullName())
-                                : "Unknown")
-                .serviceName(appointment.getService() != null ? appointment.getService().getName() : "Unknown Service")
-                .startAt(appointment.getStartAt())
-                .endAt(appointment.getEndAt())
+                .customerName(appointment.getCustomerName() != null ?
+                        maskCustomerName(appointment.getCustomerName()) : "Unknown")
+                .appointmentDateTime(appointment.getAppointmentDateTime())
                 .status(appointment.getStatus())
-                .technicianName(
-                        appointment.getTechnician() != null ? appointment.getTechnician().getFullName() : "Unassigned")
+                .note(appointment.getNote())
                 .build();
     }
 
     /**
-     * Create customer-facing appointment response
+     * Create customer-facing appointment response for reminders
      */
     public AppointmentResponse createCustomerResponse(Appointment appointment) {
         return AppointmentResponse.builder()
                 .apptId(appointment.getApptId())
-                .serviceName(appointment.getService() != null ? appointment.getService().getName() : "Unknown Service")
-                .startAt(appointment.getStartAt())
-                .endAt(appointment.getEndAt())
+                .customerName(appointment.getCustomerName())
+                .customerPhone(appointment.getCustomerPhone())
+                .appointmentDateTime(appointment.getAppointmentDateTime())
                 .status(appointment.getStatus())
-                .technicianName(appointment.getTechnician() != null
-                        ? "Technician " + appointment.getTechnician().getFullName().substring(0, 1) + "."
-                        : "TBD")
                 .note(appointment.getNote())
                 .build();
     }
 
     // Helper methods
 
+    /**
+     * Mask customer name for privacy in list views
+     */
     private String maskCustomerName(String fullName) {
         if (fullName == null || fullName.trim().isEmpty())
             return "Unknown";

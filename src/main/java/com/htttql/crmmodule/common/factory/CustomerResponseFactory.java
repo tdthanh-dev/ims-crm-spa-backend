@@ -23,12 +23,20 @@ public class CustomerResponseFactory {
      * Create minimal customer response for lists and public APIs
      */
     public CustomerResponse createBasicResponse(Customer customer) {
+        String tierCode = "REGULAR";
+        String tierName = "Regular";
+
+        if (customer.getTier() != null && customer.getTier().getCode() != null) {
+            tierCode = customer.getTier().getCode().name();
+            tierName = customer.getTier().getCode().getDescription();
+        }
+
         return CustomerResponse.builder()
                 .customerId(customer.getCustomerId())
                 .fullName(customer.getFullName())
                 .phone(maskPhone(customer.getPhone()))
-                .tierCode(customer.getTier().getCode().name())
-                .tierName(customer.getTier().getCode().getDescription())
+                .tierCode(tierCode)
+                .tierName(tierName)
                 .isVip(customer.getIsVip())
                 .email(customer.getEmail() != null ? maskEmail(customer.getEmail()) : null)
                 .displayAddress(processAddress(customer.getAddress()))
@@ -39,16 +47,24 @@ public class CustomerResponseFactory {
      * Create full customer response with all data (for permission-based masking)
      */
     public CustomerResponse createFullResponse(Customer customer) {
+        String tierCode = "REGULAR";
+        String tierName = "Regular";
+
+        if (customer.getTier() != null && customer.getTier().getCode() != null) {
+            tierCode = customer.getTier().getCode().name();
+            tierName = customer.getTier().getCode().getDescription();
+        }
+
         return CustomerResponse.builder()
                 .customerId(customer.getCustomerId())
                 .fullName(customer.getFullName())
                 .phone(customer.getPhone()) // Full phone, no masking
                 .email(customer.getEmail()) // Full email, no masking
-                .displayAddress(customer.getAddress()) // Full address
+                .displayAddress(processAddress(customer.getAddress())) // Processed for display
                 .dob(customer.getDob())
                 .notes(customer.getNotes())
-                .tierCode(customer.getTier().getCode().name())
-                .tierName(customer.getTier().getCode().getDescription())
+                .tierCode(tierCode)
+                .tierName(tierName)
                 .isVip(customer.getIsVip())
                 .totalSpent(customer.getTotalSpent())
                 .totalPoints(customer.getTotalPoints())
@@ -59,6 +75,14 @@ public class CustomerResponseFactory {
      * Create detailed response for authorized staff
      */
     public CustomerDetailResponse createDetailResponse(Customer customer) {
+        String tierCode = "REGULAR";
+        String tierName = "Regular";
+
+        if (customer.getTier() != null && customer.getTier().getCode() != null) {
+            tierCode = customer.getTier().getCode().name();
+            tierName = customer.getTier().getCode().getDescription();
+        }
+
         return CustomerDetailResponse.builder()
                 .customerId(customer.getCustomerId())
                 .fullName(customer.getFullName())
@@ -67,8 +91,8 @@ public class CustomerResponseFactory {
                 .dob(customer.getDob())
                 .gender(customer.getGender())
                 .displayAddress(processAddress(customer.getAddress()))
-                .tierCode(customer.getTier().getCode().name())
-                .tierName(customer.getTier().getCode().getDescription())
+                .tierCode(tierCode)
+                .tierName(tierName)
                 .isVip(customer.getIsVip())
                 .memberSince(calculateMembershipDuration(customer.getCreatedAt()))
                 .visitCount(calculateVisitCount(customer))
@@ -162,7 +186,11 @@ public class CustomerResponseFactory {
             return "NEW";
 
         java.math.BigDecimal spent = customer.getTotalSpent();
-        TierCode tier = customer.getTier().getCode();
+        TierCode tier = TierCode.REGULAR; // Default
+
+        if (customer.getTier() != null && customer.getTier().getCode() != null) {
+            tier = customer.getTier().getCode();
+        }
 
         if (tier == TierCode.VIP)
             return "VIP";

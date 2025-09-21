@@ -1,5 +1,8 @@
 package com.htttql.crmmodule.lead.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.htttql.crmmodule.common.config.CustomLocalTimeDeserializer;
 import com.htttql.crmmodule.common.enums.AppointmentStatus;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -8,44 +11,62 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
- * DTO for Appointment creation/update
- * - Cho phép tạo từ lead hoặc customer (ít nhất một).
- * - technicianId là OPTIONAL (có thể null).
- * - receptionistId REQUIRED (entity đang nullable=false).
+ * DTO for simple Appointment creation/update
+ * Simplified version - just basic reminder information
+ * - Flexible references: leadId, customerId, or direct name/phone
+ * - Simple date/time instead of complex scheduling
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AppointmentRequest {
 
-    // One-of: leadId or customerId
-    private Long leadId;                // optional
+    // 👇 Flexible references - can be null, one, or both
+    private Long leadId;                // Optional reference to lead
+    private Long customerId;            // Optional reference to customer
 
-    private Long customerId;            // optional (trước đây @NotNull, nay bỏ để cho phép lead-only)
+    // 👇 Direct customer info for simple reminders
+    private String customerName;        // Customer name for reminder
+    private String customerPhone;       // Customer phone for reminder
 
-    @NotNull(message = "Service ID is required")
-    private Long serviceId;
+    // 👇 Simple appointment date/time
+    @NotNull(message = "Appointment date and time is required")
+    private java.time.LocalDateTime appointmentDateTime;  // Date and time
 
-    @NotNull(message = "Start time is required")
-    private LocalDateTime startAt;
-
-    @NotNull(message = "End time is required")
-    private LocalDateTime endAt;
-
-    // Optional, mặc định SCHEDULED nếu null
-    private AppointmentStatus status;
+    // 👇 Optional status and note
+    private AppointmentStatus status;   // Default: SCHEDULED
 
     @Size(max = 500, message = "Notes must not exceed 500 characters")
-    private String notes;
+    private String notes;               // Reminder note
 
-    // Technician là OPTIONAL
-    private Long technicianId;          // có thể null
+    // 👇 Validation: at least one identifier or name/phone
+    public boolean isValid() {
+        return (leadId != null || customerId != null ||
+                (customerName != null && customerPhone != null));
+    }
 
-    // Receptionist là REQUIRED (entity nullable=false)
-    @NotNull(message = "Receptionist ID is required")
-    private Long receptionistId;
+    public String getValidationMessage() {
+        if (isValid()) return "Valid";
+        return "Either leadId, customerId, or both customerName and customerPhone must be provided";
+    }
+
+    // 👇 Smart validation for business logic
+    public boolean hasCustomerOrLead() {
+        return leadId != null || customerId != null;
+    }
+
+    public boolean needsDirectInfo() {
+        return !hasCustomerOrLead();
+    }
+
+    public boolean hasCompleteInfo() {
+        return hasCustomerOrLead() ||
+               (customerName != null && customerPhone != null);
+    }
 }

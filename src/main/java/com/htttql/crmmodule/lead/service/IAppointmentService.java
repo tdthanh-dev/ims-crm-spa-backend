@@ -21,6 +21,11 @@ public interface IAppointmentService {
     AppointmentResponse getAppointmentById(Long id);
 
     /**
+     * Get appointments by customer ID with pagination
+     */
+    Page<AppointmentResponse> getAppointmentsByCustomerId(Long customerId, Pageable pageable);
+
+    /**
      * Create new appointment
      */
     AppointmentResponse createAppointment(AppointmentRequest request);
@@ -41,22 +46,8 @@ public interface IAppointmentService {
     AppointmentResponse updateAppointmentStatus(Long id, String status);
 
     /**
-     * Get today's appointments
+     * Update appointment status with reason and notes
      */
-    Page<AppointmentResponse> getTodayAppointments(int page, int size, String sortBy, String sortDir);
+    AppointmentResponse updateAppointmentStatus(Long id, String status, String reason, String notes);
 
-    /**
-     * Get appointments by date range
-     */
-    Page<AppointmentResponse> getAppointmentsByDateRange(String startDate, String endDate, int page, int size);
-
-    /**
-     * Get technician's appointments
-     */
-    Page<AppointmentResponse> getTechnicianAppointments(Long technicianId, int page, int size);
-
-    /**
-     * Get customer's appointments
-     */
-    Page<AppointmentResponse> getCustomerAppointments(Long customerId, int page, int size);
 }

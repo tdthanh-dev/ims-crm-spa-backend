@@ -1,38 +1,62 @@
 package com.htttql.crmmodule.core.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.htttql.crmmodule.common.enums.Gender;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 /**
- * Minimal Customer Response - Only essential info
- * For detailed info, use specific endpoints with proper authorization
+ * Customer Response DTO - Simplified for basic customer information
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class CustomerResponse {
 
     private Long customerId;
     private String fullName;
     private String phone;
-
-    // Tier info - useful for business logic
+    private String email;
+    private LocalDate dob;
+    private Gender gender;
+    private String displayAddress;
     private String tierCode;
     private String tierName;
-    private Boolean isVip;
-
-    // Optional fields - only included when specifically requested
-    private String email;
-    private String displayAddress; // Processed address, not full address
-    private java.time.LocalDate dob;
-    private String notes;
-
-    // Financial info (masked for security)
-    private java.math.BigDecimal totalSpent;
     private Integer totalPoints;
+    private BigDecimal totalSpent;
+    private String notes;
+    private Boolean isVip;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    // Computed fields for display
+    public String getDisplayName() {
+        return fullName != null ? fullName : "Unknown";
+    }
+
+    public String getDisplayPhone() {
+        return phone != null ? phone : "N/A";
+    }
+
+    public String getDisplayEmail() {
+        return email != null ? email : "N/A";
+    }
+
+    public String getDisplayGender() {
+        return gender != null ? gender.name() : "N/A";
+    }
+
+    public String getDisplayTier() {
+        return tierName != null ? tierName : "N/A";
+    }
+
+    public String getDisplayAddress() {
+        return displayAddress != null ? displayAddress : "N/A";
+    }
 }

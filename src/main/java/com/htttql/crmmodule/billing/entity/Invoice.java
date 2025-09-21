@@ -35,44 +35,51 @@ public class Invoice extends BaseEntity {
             + ".invoice_seq", allocationSize = 1)
     @Column(name = "invoice_id")
     private Long invoiceId;
-
+    //Hồ sơ khách hàng
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "case_id", unique = true, foreignKey = @ForeignKey(name = "fk_invoice_case"))
     private CustomerCase customerCase;
-
+    //Khách hàng
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false, foreignKey = @ForeignKey(name = "fk_invoice_customer"))
     private Customer customer;
 
+    //Nhân viên
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name = "fk_invoice_user"))
-    private StaffUser staffUser; // User who created/collected the payment
-
+    private StaffUser staffUser; 
+    //Tổng tiền
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
+    //Trạng thái
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private InvoiceStatus status = InvoiceStatus.DRAFT;
 
+    //Ngày thanh toán
     @Column(name = "paid_at", columnDefinition = "TIMESTAMPTZ")
     private LocalDateTime paidAt;
 
-    // Invoice details
+    //Số hóa đơn
     @Column(name = "invoice_number", unique = true, length = 50)
     private String invoiceNumber;
 
+    //Ngày đến hạn
     @Column(name = "due_date")
     private LocalDateTime dueDate;
 
+    //Ghi chú
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    //Thanh toán
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Payment> payments = new ArrayList<>();
 
+    //Tạo hóa đơn
     @PrePersist
     protected void onCreate() {
         super.onCreate();
@@ -84,6 +91,7 @@ public class Invoice extends BaseEntity {
         }
     }
 
+    //Cập nhật hóa đơn
     @PreUpdate
     protected void onUpdate() {
         super.onUpdate();

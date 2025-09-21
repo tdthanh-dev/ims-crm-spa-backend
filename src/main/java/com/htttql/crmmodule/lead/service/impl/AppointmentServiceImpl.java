@@ -3,18 +3,12 @@ package com.htttql.crmmodule.lead.service.impl;
 import com.htttql.crmmodule.common.enums.AppointmentStatus;
 import com.htttql.crmmodule.common.exception.ResourceNotFoundException;
 import com.htttql.crmmodule.core.repository.ICustomerRepository;
-import com.htttql.crmmodule.core.repository.IStaffUserRepository;
 import com.htttql.crmmodule.lead.dto.AppointmentRequest;
 import com.htttql.crmmodule.lead.dto.AppointmentResponse;
 import com.htttql.crmmodule.lead.entity.Appointment;
-import com.htttql.crmmodule.lead.entity.Lead;
 import com.htttql.crmmodule.lead.repository.IAppointmentRepository;
 import com.htttql.crmmodule.lead.repository.ILeadRepository;
 import com.htttql.crmmodule.lead.service.IAppointmentService;
-import com.htttql.crmmodule.service.entity.SpaService;
-import com.htttql.crmmodule.service.repository.IServiceRepository;
-import com.htttql.crmmodule.core.entity.Customer;
-import com.htttql.crmmodule.core.entity.StaffUser;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -22,8 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -32,50 +24,24 @@ public class AppointmentServiceImpl implements IAppointmentService {
     private final IAppointmentRepository appointmentRepository;
     private final ILeadRepository leadRepository;
     private final ICustomerRepository customerRepository;
-    private final IServiceRepository serviceRepository;
-    private final IStaffUserRepository staffUserRepository;
 
-    // 👉 Mapper nội bộ
+    // 👉 Mapper nội bộ - simplified for simple reminders
     private AppointmentResponse toResponse(Appointment appointment) {
-        AppointmentResponse response = new AppointmentResponse();
-        response.setApptId(appointment.getApptId());
-
-        if (appointment.getCustomer() != null) {
-            Customer c = appointment.getCustomer();
-            response.setCustomerId(c.getCustomerId());
-            response.setCustomerName(c.getFullName());
-        } else if (appointment.getLead() != null) {
-            Lead l = appointment.getLead();
-            response.setCustomerId(l.getCustomerId()); // có thể null
-            response.setCustomerName(l.getFullName());
-        } else {
-            response.setCustomerName("Unknown Customer");
-        }
-
-        SpaService s = appointment.getService();
-        if (s != null) {
-            response.setServiceId(s.getServiceId());
-            response.setServiceName(s.getName());
-        }
-
-        StaffUser tech = appointment.getTechnician();
-        if (tech != null) {
-            response.setTechnicianId(tech.getStaffId());
-            response.setTechnicianName(tech.getFullName());
-        }
-
-        StaffUser recep = appointment.getReceptionist();
-        if (recep != null) {
-            response.setReceptionistId(recep.getStaffId());
-            response.setReceptionistName(recep.getFullName());
-        }
-
-        response.setStartAt(appointment.getStartAt());
-        response.setEndAt(appointment.getEndAt());
-        response.setStatus(appointment.getStatus());
-        response.setNote(appointment.getNote());
-
-        return response;
+        return AppointmentResponse.builder()
+                .apptId(appointment.getApptId())
+                .leadId(appointment.getLeadId())
+                .customerId(appointment.getCustomerId())
+                .customerName(appointment.getCustomerName())
+                .customerPhone(appointment.getCustomerPhone())
+                .appointmentDateTime(appointment.getAppointmentDateTime())
+                .status(appointment.getStatus())
+                .note(appointment.getNote())
+                .reminderSent(appointment.getReminderSent())
+                .confirmedAt(appointment.getConfirmedAt())
+                .cancelledReason(appointment.getCancelledReason())
+                .createdAt(appointment.getCreatedAt())
+                .updatedAt(appointment.getUpdatedAt())
+                .build();
     }
 
     @Override
@@ -91,47 +57,47 @@ public class AppointmentServiceImpl implements IAppointmentService {
     }
 
     @Override
+    public Page<AppointmentResponse> getAppointmentsByCustomerId(Long customerId, Pageable pageable) {
+        return appointmentRepository.findByCustomerIdOrderByAppointmentDateTimeDesc(customerId, pageable)
+                .map(this::toResponse);
+    }
+
+    @Override
     public AppointmentResponse createAppointment(AppointmentRequest request) {
-        if (request.getLeadId() == null && request.getCustomerId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Either leadId or customerId is required");
-        }
-        if (request.getLeadId() != null && request.getCustomerId() != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Specify either leadId or customerId, not both");
-        }
-        if (request.getReceptionistId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "receptionistId is required");
+        // 👉 Validate request
+        if (!request.isValid()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, request.getValidationMessage());
         }
 
+        // 👉 Get customer info with priority: Customer > Lead > Request
+        String customerName = request.getCustomerName();
+        String customerPhone = request.getCustomerPhone();
+
+        // 1️⃣ Ưu tiên 1: Customer (nếu có customerId)
+        if (request.getCustomerId() != null) {
+            var customer = customerRepository.findById(request.getCustomerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId()));
+            customerName = customer.getFullName();
+            customerPhone = customer.getPhone();
+        }
+        // 2️⃣ Ưu tiên 2: Lead (nếu không có customerId nhưng có leadId)
+        else if (request.getLeadId() != null) {
+            var lead = leadRepository.findById(request.getLeadId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + request.getLeadId()));
+            customerName = lead.getFullName();
+            customerPhone = lead.getPhone();
+        }
+        // 3️⃣ Ưu tiên 3: Request data (nếu cả customerId và leadId đều null)
+
         Appointment appointment = Appointment.builder()
-                .startAt(request.getStartAt())
-                .endAt(request.getEndAt())
+                .leadId(request.getLeadId())
+                .customerId(request.getCustomerId())
+                .customerName(customerName)      // 👈 Use resolved name
+                .customerPhone(customerPhone)   // 👈 Use resolved phone
+                .appointmentDateTime(request.getAppointmentDateTime())
                 .status(request.getStatus() != null ? request.getStatus() : AppointmentStatus.SCHEDULED)
                 .note(request.getNotes())
                 .build();
-
-        if (request.getLeadId() != null) {
-            var lead = leadRepository.findById(request.getLeadId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + request.getLeadId()));
-            appointment.setLead(lead);
-        } else {
-            var customer = customerRepository.findById(request.getCustomerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId()));
-            appointment.setCustomer(customer);
-        }
-
-        var service = serviceRepository.findById(request.getServiceId())
-                .orElseThrow(() -> new ResourceNotFoundException("Service not found with id: " + request.getServiceId()));
-        appointment.setService(service);
-
-        if (request.getTechnicianId() != null) {
-            var tech = staffUserRepository.findById(request.getTechnicianId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Technician not found with id: " + request.getTechnicianId()));
-            appointment.setTechnician(tech);
-        }
-
-        var recep = staffUserRepository.findById(request.getReceptionistId())
-                .orElseThrow(() -> new ResourceNotFoundException("Receptionist not found with id: " + request.getReceptionistId()));
-        appointment.setReceptionist(recep);
 
         return toResponse(appointmentRepository.save(appointment));
     }
@@ -141,41 +107,34 @@ public class AppointmentServiceImpl implements IAppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + id));
 
-        if (request.getLeadId() != null && request.getCustomerId() != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Specify either leadId or customerId, not both");
-        }
-        if (request.getLeadId() != null) {
-            var lead = leadRepository.findById(request.getLeadId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + request.getLeadId()));
-            appointment.setLead(lead);
-            appointment.setCustomer(null);
-        } else if (request.getCustomerId() != null) {
+        // 👉 Get customer info with priority: Customer > Lead > Request
+        String customerName = request.getCustomerName();
+        String customerPhone = request.getCustomerPhone();
+
+        // 1️⃣ Ưu tiên 1: Customer (nếu có customerId)
+        if (request.getCustomerId() != null) {
             var customer = customerRepository.findById(request.getCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId()));
-            appointment.setCustomer(customer);
-            appointment.setLead(null);
+            customerName = customer.getFullName();
+            customerPhone = customer.getPhone();
         }
+        // 2️⃣ Ưu tiên 2: Lead (nếu không có customerId nhưng có leadId)
+        else if (request.getLeadId() != null) {
+            var lead = leadRepository.findById(request.getLeadId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + request.getLeadId()));
+            customerName = lead.getFullName();
+            customerPhone = lead.getPhone();
+        }
+        // 3️⃣ Ưu tiên 3: Request data (nếu cả customerId và leadId đều null)
 
-        var service = serviceRepository.findById(request.getServiceId())
-                .orElseThrow(() -> new ResourceNotFoundException("Service not found with id: " + request.getServiceId()));
-        appointment.setService(service);
-
-        appointment.setStartAt(request.getStartAt());
-        appointment.setEndAt(request.getEndAt());
+        // 👉 Update fields
+        appointment.setLeadId(request.getLeadId());
+        appointment.setCustomerId(request.getCustomerId());
+        appointment.setCustomerName(customerName);      // 👈 Use resolved name
+        appointment.setCustomerPhone(customerPhone);   // 👈 Use resolved phone
+        appointment.setAppointmentDateTime(request.getAppointmentDateTime());
         appointment.setStatus(request.getStatus() != null ? request.getStatus() : appointment.getStatus());
         appointment.setNote(request.getNotes());
-
-        if (request.getTechnicianId() != null) {
-            var tech = staffUserRepository.findById(request.getTechnicianId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Technician not found with id: " + request.getTechnicianId()));
-            appointment.setTechnician(tech);
-        }
-
-        if (request.getReceptionistId() != null) {
-            var recep = staffUserRepository.findById(request.getReceptionistId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Receptionist not found with id: " + request.getReceptionistId()));
-            appointment.setReceptionist(recep);
-        }
 
         return toResponse(appointmentRepository.save(appointment));
     }
@@ -190,50 +149,33 @@ public class AppointmentServiceImpl implements IAppointmentService {
 
     @Override
     public AppointmentResponse updateAppointmentStatus(Long id, String status) {
+        return updateAppointmentStatus(id, status, null, null);
+    }
+
+    @Override
+    public AppointmentResponse updateAppointmentStatus(Long id, String status, String reason, String notes) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + id));
 
         AppointmentStatus appointmentStatus = AppointmentStatus.valueOf(status.toUpperCase());
         appointment.setStatus(appointmentStatus);
 
+        // Update confirmedAt if status is CONFIRMED
+        if (appointmentStatus == AppointmentStatus.CONFIRMED) {
+            appointment.setConfirmedAt(java.time.LocalDateTime.now());
+        }
+
+        // Update cancelledReason if status is CANCELLED and reason is provided
+        if (appointmentStatus == AppointmentStatus.CANCELLED && reason != null) {
+            appointment.setCancelledReason(reason);
+        }
+
+        // Update notes if provided
+        if (notes != null) {
+            appointment.setNote(notes);
+        }
+
         return toResponse(appointmentRepository.save(appointment));
     }
 
-    @Override
-    public Page<AppointmentResponse> getTodayAppointments(int page, int size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime todayEnd = todayStart.plusDays(1).minusNanos(1);
-
-        return appointmentRepository.findByStartAtBetween(todayStart, todayEnd, pageable).map(this::toResponse);
-    }
-
-    @Override
-    public Page<AppointmentResponse> getAppointmentsByDateRange(String startDate, String endDate, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return appointmentRepository.findAll(pageable).map(this::toResponse);
-    }
-
-    @Override
-    public Page<AppointmentResponse> getTechnicianAppointments(Long technicianId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return appointmentRepository.findAll(pageable).map(this::toResponse);
-    }
-
-    @Override
-    public Page<AppointmentResponse> getCustomerAppointments(Long customerId, int page, int size) {
-        customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + customerId));
-
-        Pageable pageable = PageRequest.of(page, size);
-        List<Appointment> appointments = appointmentRepository.findByCustomer_CustomerId(customerId);
-
-        int start = page * size;
-        int end = Math.min(start + size, appointments.size());
-        List<Appointment> pageContent = appointments.subList(start, end);
-
-        return new PageImpl<>(pageContent, pageable, appointments.size()).map(this::toResponse);
-    }
 }

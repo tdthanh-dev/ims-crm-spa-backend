@@ -31,53 +31,53 @@ public class Payment extends BaseEntity {
             + ".payment_seq", allocationSize = 1)
     @Column(name = "payment_id")
     private Long paymentId;
-
+    //Hóa đơn
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id", nullable = false, foreignKey = @ForeignKey(name = "fk_payment_invoice"))
     private Invoice invoice;
-
+    //Phương thức thanh toán
     @Enumerated(EnumType.STRING)
     @Column(name = "method", nullable = false, length = 20)
     private PaymentMethod method;
-
+    //Số tiền
     @Column(name = "amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
-
+    //Mã giao dịch
     @Column(name = "txn_ref", length = 100)
     private String txnRef;
-
+    //Nhân viên thanh toán
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "paid_by", nullable = false, foreignKey = @ForeignKey(name = "fk_payment_staff"))
     private StaffUser paidBy;
-
+    //Ngày thanh toán
     @Column(name = "paid_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private LocalDateTime paidAt;
-
+    //Ghi chú
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
-
+    //Số cuối cùng của thẻ
     @Column(name = "card_last_four", length = 4)
     private String cardLastFour;
-
+    //Tên ngân hàng
     @Column(name = "bank_name", length = 100)
     private String bankName;
-
+    //Nhà cung cấp ví điện tử
     @Column(name = "ewallet_provider", length = 50)
     private String ewalletProvider;
-
+    //Số phiếu thu
     @Column(name = "receipt_number", unique = true, length = 50)
     private String receiptNumber;
-
+    //Đã hoàn trả   
     @Column(name = "is_refunded")
     @Builder.Default
     private Boolean isRefunded = false;
-
+    //Ngày hoàn trả
     @Column(name = "refunded_at", columnDefinition = "TIMESTAMPTZ")
     private LocalDateTime refundedAt;
-
+    //Lý do hoàn trả
     @Column(name = "refund_reason", columnDefinition = "TEXT")
     private String refundReason;
-
+    //Tạo thanh toán
     @PrePersist
     protected void onCreate() {
         super.onCreate();

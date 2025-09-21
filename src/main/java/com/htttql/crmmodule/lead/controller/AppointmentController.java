@@ -49,6 +49,17 @@ public class AppointmentController {
         return ResponseEntity.ok(ApiResponse.success(appointment, "Appointment retrieved successfully"));
     }
 
+    @Operation(summary = "Get appointments by customer ID with pagination")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN')")
+    @GetMapping("/customer/{customerId}")
+    public ResponseEntity<ApiResponse<PageResponse<AppointmentResponse>>> getAppointmentsByCustomerId(
+            @PathVariable Long customerId, Pageable pageable) {
+        Page<AppointmentResponse> appointments = appointmentService.getAppointmentsByCustomerId(customerId, pageable);
+        PageResponse<AppointmentResponse> response = PageResponse.from(appointments);
+        return ResponseEntity.ok(ApiResponse.success(response, "Appointments retrieved successfully"));
+    }
+
     @Operation(summary = "Create new appointment")
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTIONIST')")
@@ -80,61 +91,9 @@ public class AppointmentController {
         return ResponseEntity.ok(ApiResponse.success("Appointment deleted successfully"));
     }
 
-    @Operation(summary = "Get today's appointments")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN')")
-    @GetMapping("/today")
-    public ResponseEntity<Page<AppointmentResponse>> getTodayAppointments(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "apptId") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
 
-        Page<AppointmentResponse> appointments = appointmentService.getTodayAppointments(page, size, sortBy, sortDir);
-        return ResponseEntity.ok(appointments);
-    }
 
-    @Operation(summary = "Get appointments by date range")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN')")
-    @GetMapping("/calendar")
-    public ResponseEntity<Page<AppointmentResponse>> getAppointmentsByDateRange(
-            @RequestParam String startDate,
-            @RequestParam String endDate,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
 
-        Page<AppointmentResponse> appointments = appointmentService.getAppointmentsByDateRange(startDate, endDate, page,
-                size);
-        return ResponseEntity.ok(appointments);
-    }
-
-    @Operation(summary = "Get technician's appointments")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("hasAnyRole('MANAGER', 'TECHNICIAN')")
-    @GetMapping("/technician/{technicianId}")
-    public ResponseEntity<Page<AppointmentResponse>> getTechnicianAppointments(
-            @PathVariable Long technicianId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        Page<AppointmentResponse> appointments = appointmentService.getTechnicianAppointments(technicianId, page, size);
-        return ResponseEntity.ok(appointments);
-    }
-
-    @Operation(summary = "Get customer's appointments")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'RECEPTIONIST', 'TECHNICIAN')")
-    @GetMapping("/customer/{customerId}")
-    public ResponseEntity<ApiResponse<PageResponse<AppointmentResponse>>> getCustomerAppointments(
-            @PathVariable Long customerId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        Page<AppointmentResponse> appointments = appointmentService.getCustomerAppointments(customerId, page, size);
-        PageResponse<AppointmentResponse> response = PageResponse.from(appointments);
-        return ResponseEntity.ok(ApiResponse.success(response, "Customer appointments retrieved successfully"));
-    }
 
     @Operation(summary = "Update appointment status")
     @SecurityRequirement(name = "Bearer Authentication")
@@ -143,7 +102,7 @@ public class AppointmentController {
     public ResponseEntity<AppointmentResponse> updateAppointmentStatus(
             @PathVariable Long id,
             @Valid @RequestBody StatusUpdateRequest request) {
-        AppointmentResponse appointment = appointmentService.updateAppointmentStatus(id, request.getStatus());
+        AppointmentResponse appointment = appointmentService.updateAppointmentStatus(id, request.getStatus(), request.getReason(), request.getNotes());
         return ResponseEntity.ok(appointment);
     }
 }

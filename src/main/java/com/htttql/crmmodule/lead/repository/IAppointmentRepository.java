@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Repository interface for Appointment entity
+ * Repository interface for Appointment entity - Simplified for basic reminders
  */
 @Repository
 public interface IAppointmentRepository extends JpaRepository<Appointment, Long> {
@@ -22,7 +22,17 @@ public interface IAppointmentRepository extends JpaRepository<Appointment, Long>
     /**
      * Find appointments by customer ID
      */
-    List<Appointment> findByCustomer_CustomerId(Long customerId);
+    List<Appointment> findByCustomerId(Long customerId);
+
+    /**
+     * Find appointments by customer ID with pagination, ordered by appointment date time descending
+     */
+    Page<Appointment> findByCustomerIdOrderByAppointmentDateTimeDesc(Long customerId, Pageable pageable);
+
+    /**
+     * Find appointments by lead ID
+     */
+    List<Appointment> findByLeadId(Long leadId);
 
     /**
      * Find appointments by status
@@ -30,32 +40,38 @@ public interface IAppointmentRepository extends JpaRepository<Appointment, Long>
     List<Appointment> findByStatus(AppointmentStatus status);
 
     /**
-     * Find appointments by service ID
+     * Find appointments by appointment date
      */
-    List<Appointment> findByService_ServiceId(Long serviceId);
+    Page<Appointment> findByAppointmentDateTime(LocalDate date, Pageable pageable);
+
+    /**
+     * Find appointments between date range
+     */
+    @Query("SELECT a FROM Appointment a WHERE a.appointmentDateTime BETWEEN :startDate AND :endDate")
+    List<Appointment> findByAppointmentDateTimeBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     /**
      * Find appointments for today
      */
-    Page<Appointment> findByStartAtBetween(LocalDateTime start, LocalDateTime end, Pageable pageable);
+    @Query("SELECT a FROM Appointment a WHERE DATE(a.appointmentDateTime) = :date")
+    Page<Appointment> findByAppointmentDateToday(@Param("date") LocalDate date, Pageable pageable);
 
     /**
-     * Count appointments by date range
+     * Count appointments by date
      */
-    @Query("SELECT COUNT(a) FROM Appointment a WHERE DATE(a.startAt) = :date")
-    long countByDate(@Param("date") LocalDate date);
+    long countByAppointmentDateTime(LocalDate date);
 
     /**
-     * Count appointments by date range and status
+     * Count appointments by date and status
      */
-    @Query("SELECT COUNT(a) FROM Appointment a WHERE DATE(a.startAt) = :date AND a.status = :status")
+    @Query("SELECT COUNT(a) FROM Appointment a WHERE DATE(a.appointmentDateTime) = :date AND a.status = :status")
     long countByDateAndStatus(@Param("date") LocalDate date, @Param("status") AppointmentStatus status);
 
     /**
      * Count appointments by date range
      */
-    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.startAt BETWEEN :start AND :end")
-    long countByDateRange(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.appointmentDateTime BETWEEN :startDate AND :endDate")
+    long countByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     /**
      * Count appointments by status
@@ -63,26 +79,36 @@ public interface IAppointmentRepository extends JpaRepository<Appointment, Long>
     long countByStatus(AppointmentStatus status);
 
     /**
-     * Count customers with multiple appointments (returning customers)
+     * Count appointments by customer ID
      */
-    @Query("SELECT COUNT(DISTINCT a.customer) FROM Appointment a WHERE " +
-           "(SELECT COUNT(a2) FROM Appointment a2 WHERE a2.customer = a.customer) > 1")
-    long countReturningCustomers();
+    long countByCustomerId(Long customerId);
 
     /**
-     * Count active customers within date range
+     * Count appointments by lead ID
      */
-    @Query("SELECT COUNT(DISTINCT a.customer) FROM Appointment a WHERE a.startAt BETWEEN :start AND :end")
-    long countActiveCustomersInDateRange(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
-
-    /**
-     * Count appointments by service ID
-     */
-    long countByService_ServiceId(Long serviceId);
+    long countByLeadId(Long leadId);
 
     /**
      * Count appointments by date range and status
      */
-    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.startAt BETWEEN :start AND :end AND a.status = :status")
-    long countByDateRangeAndStatus(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, @Param("status") AppointmentStatus status);
+    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.appointmentDateTime BETWEEN :startDate AND :endDate AND a.status = :status")
+    long countByDateRangeAndStatus(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, @Param("status") AppointmentStatus status);
+
+    /**
+     * Find upcoming appointments (future dates)
+     */
+    @Query("SELECT a FROM Appointment a WHERE a.appointmentDateTime >= :date ORDER BY a.appointmentDateTime")
+    List<Appointment> findUpcomingAppointments(@Param("date") LocalDateTime date);
+
+    /**
+     * Find past appointments (past dates)
+     */
+    @Query("SELECT a FROM Appointment a WHERE a.appointmentDateTime < :date ORDER BY a.appointmentDateTime DESC")
+    List<Appointment> findPastAppointments(@Param("date") LocalDateTime date);
+
+    /**
+     * Find today's appointments
+     */
+    @Query("SELECT a FROM Appointment a WHERE DATE(a.appointmentDateTime) = :date ORDER BY a.appointmentDateTime")
+    List<Appointment> findTodayAppointments(@Param("date") LocalDate date);
 }

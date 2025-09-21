@@ -14,6 +14,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.data.mapping.PropertyReferenceException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -145,6 +146,19 @@ public class GlobalExceptionHandler {
                                                 .success(false)
                                                 .error(ex.getMessage())
                                                 .errorCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                                                .path(request.getRequestURI())
+                                                .build());
+        }
+
+        @ExceptionHandler(PropertyReferenceException.class)
+        public ResponseEntity<ApiResponse<Void>> handlePropertyReferenceException(
+                        PropertyReferenceException ex, HttpServletRequest request) {
+                log.error("Invalid sort property: {}", ex.getMessage());
+                return ResponseEntity.badRequest().body(
+                                ApiResponse.<Void>builder()
+                                                .success(false)
+                                                .error("Invalid sort parameter. Valid sort fields are: appointmentDate, status, customerName, customerPhone")
+                                                .errorCode(HttpStatus.BAD_REQUEST.value())
                                                 .path(request.getRequestURI())
                                                 .build());
         }
