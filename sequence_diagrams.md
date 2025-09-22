@@ -190,15 +190,19 @@ sequenceDiagram
     deactivate CasePhotoController
 ```
 
-## 7. Thanh toán
+## 7. Thanh toán (với cập nhật điểm và tier)
 ```mermaid
 sequenceDiagram
     participant User as User
     participant PaymentController
     participant PaymentService
     participant PaymentRepository
+    participant PointTransactionRepository
+    participant CustomerRepository
+    participant CustomerTierService
     participant InvoiceService
     participant InvoiceRepository
+    participant CustomerCaseRepository
 
     User->>PaymentController: POST /api/payments (invoiceId, paymentMethod, amount)
     activate PaymentController
@@ -208,6 +212,18 @@ sequenceDiagram
     activate PaymentRepository
     PaymentRepository-->>PaymentService: paymentEntity
     deactivate PaymentRepository
+    PaymentService->>PointTransactionRepository: save(pointTransaction)
+    activate PointTransactionRepository
+    PointTransactionRepository-->>PaymentService: pointTransactionEntity
+    deactivate PointTransactionRepository
+    PaymentService->>CustomerRepository: update(points)
+    activate CustomerRepository
+    CustomerRepository-->>PaymentService: updatedCustomer
+    deactivate CustomerRepository
+    PaymentService->>CustomerTierService: refreshCustomerTierInternal(customerId)
+    activate CustomerTierService
+    CustomerTierService-->>PaymentService: tierUpdated
+    deactivate CustomerTierService
     PaymentService->>InvoiceService: updateInvoiceStatus(invoiceId, "Paid")
     activate InvoiceService
     InvoiceService->>InvoiceRepository: update(invoice)
@@ -216,6 +232,10 @@ sequenceDiagram
     deactivate InvoiceRepository
     InvoiceService-->>PaymentService: statusUpdated
     deactivate InvoiceService
+    PaymentService->>CustomerCaseRepository: updateCasePaidStatus(caseId)
+    activate CustomerCaseRepository
+    CustomerCaseRepository-->>PaymentService: caseUpdated
+    deactivate CustomerCaseRepository
     PaymentService-->>PaymentController: PaymentResponse
     deactivate PaymentService
     PaymentController-->>User: response (payment ID, status)
@@ -223,8 +243,17 @@ sequenceDiagram
 ```
 
 ### Hướng dẫn sử dụng:
-- **Render trên GitHub:** GitHub tự động render Mermaid nếu bạn dùng fenced code blocks như ```mermaid.
-- **Công cụ khác:** Copy code vào Mermaid editor (mermaid.live), VS Code với extension Mermaid, hoặc diagrams.net (import từ Mermaid).
+- **Render trên GitHub:** GitHub tự động render Mermaid nếu bạn dùng fenced code blocks như ```mermaid. Để chỉnh cỡ chữ to hơn, bạn có thể dùng GitHub's HTML/CSS: Wrap code trong <div style="font-size: 18px;">```mermaid ... ```</div> hoặc dùng browser extension để zoom.
+- **Công cụ khác:** Copy code vào Mermaid editor (mermaid.live) và chỉnh font size trong settings. VS Code với extension Mermaid hỗ trợ zoom/preview. Diagrams.net (import từ Mermaid) cho phép scale diagram.
 - **Tùy chỉnh:** Nếu cần thêm details (e.g., alt fragments cho errors), cho tôi biết để update!
 
 Nếu bạn muốn file riêng cho từng diagram hoặc chỉnh sửa, cứ nói nhé! 😊
+
+**Lưu ý chỉnh cỡ chữ:** Trong GitHub, thêm HTML wrapper như sau để làm text to hơn:
+<div style="font-size: 20px;">
+```mermaid
+sequenceDiagram
+    ... (code diagram)
+```
+</div>
+Hoặc dùng PlantUML nếu cần options styling tốt hơn! 😊
