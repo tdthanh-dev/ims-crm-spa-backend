@@ -237,3 +237,183 @@ sequenceDiagram
 - **Tùy chỉnh:** Nếu cần thêm details (e.g., alt fragments cho errors), cho tôi biết để update!
 
 Nếu bạn muốn file riêng cho từng diagram hoặc chỉnh sửa, cứ nói nhé! 😊
+
+## 6. Tạo Lead và Đăng nhập sinh Token
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant LeadController
+    participant LeadService
+    participant LeadRepository
+    participant AuthController
+    participant SecurityContextService
+
+    note over User: Tạo Lead
+    User->>LeadController: POST /api/leads (fullName, phone, source)
+    activate LeadController
+    LeadController->>LeadService: createLead(request)
+    activate LeadService
+    LeadService->>LeadRepository: save(lead)
+    activate LeadRepository
+    LeadRepository-->>LeadService: leadEntity
+    deactivate LeadRepository
+    LeadService-->>LeadController: LeadResponse
+    deactivate LeadService
+    LeadController-->>User: response (lead ID, status "New")
+    deactivate LeadController
+
+    note over User: Đăng nhập sinh Token
+    User->>AuthController: POST /api/auth/login (username, password)
+    activate AuthController
+    AuthController->>SecurityContextService: authenticate(credentials)
+    activate SecurityContextService
+    SecurityContextService-->>AuthController: JWT Token
+    deactivate SecurityContextService
+    AuthController-->>User: token
+    deactivate AuthController
+```
+
+## 7. Tạo Khách hàng
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant CustomerController
+    participant CustomerService
+    participant CustomerRepository
+    participant SecurityContextService
+
+    User->>CustomerController: POST /api/customers (fullName, phone, email, etc.)
+    activate CustomerController
+    CustomerController->>SecurityContextService: getCurrentStaffId()
+    activate SecurityContextService
+    SecurityContextService-->>CustomerController: staffId
+    deactivate SecurityContextService
+    CustomerController->>CustomerService: createCustomer(request)
+    activate CustomerService
+    CustomerService->>CustomerRepository: save(customer)
+    activate CustomerRepository
+    CustomerRepository-->>CustomerService: customerEntity
+    deactivate CustomerRepository
+    CustomerService-->>CustomerController: CustomerResponse
+    deactivate CustomerService
+    CustomerController-->>User: response (customer ID, tier)
+    deactivate CustomerController
+```
+
+## 8. Tạo Lịch hẹn
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant AppointmentController
+    participant AppointmentService
+    participant AppointmentRepository
+    participant CustomerRepository
+    participant StaffService
+
+    User->>AppointmentController: POST /api/appointments (customerId, staffId, appointmentDateTime, serviceId)
+    activate AppointmentController
+    AppointmentController->>AppointmentService: createAppointment(request)
+    activate AppointmentService
+    AppointmentService->>CustomerRepository: findById(customerId)
+    activate CustomerRepository
+    CustomerRepository-->>AppointmentService: customerEntity
+    deactivate CustomerRepository
+    AppointmentService->>StaffService: checkAvailability(staffId)
+    activate StaffService
+    StaffService-->>AppointmentService: availabilityStatus
+    deactivate StaffService
+    AppointmentService->>AppointmentRepository: save(appointment)
+    activate AppointmentRepository
+    AppointmentRepository-->>AppointmentService: appointmentEntity
+    deactivate AppointmentRepository
+    AppointmentService-->>AppointmentController: AppointmentResponse
+    deactivate AppointmentService
+    AppointmentController-->>User: response (appointment ID, status "Pending")
+    deactivate AppointmentController
+```
+
+## 9. Tạo Hồ sơ Điều trị (Customer Case)
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant CustomerCaseController
+    participant CustomerCaseService
+    participant CustomerCaseRepository
+    participant CustomerRepository
+
+    User->>CustomerCaseController: POST /api/cases (customerId, serviceId, description, notes)
+    activate CustomerCaseController
+    CustomerCaseController->>CustomerCaseService: createCase(request)
+    activate CustomerCaseService
+    CustomerCaseService->>CustomerRepository: findById(customerId)
+    activate CustomerRepository
+    CustomerRepository-->>CustomerCaseService: customerEntity
+    deactivate CustomerRepository
+    CustomerCaseService->>CustomerCaseRepository: save(case)
+    activate CustomerCaseRepository
+    CustomerCaseRepository-->>CustomerCaseService: caseEntity
+    deactivate CustomerCaseRepository
+    CustomerCaseService-->>CustomerCaseController: CaseResponse
+    deactivate CustomerCaseService
+    CustomerCaseController-->>User: response (case ID, status)
+    deactivate CustomerCaseController
+```
+
+## 10. Upload Ảnh Trước Sau (Case Photos)
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant CasePhotoController
+    participant CasePhotoService
+    participant CasePhotoRepository
+    participant CustomerCaseRepository
+
+    User->>CasePhotoController: POST /api/cases/{caseId}/photos (beforeImage, afterImage, notes)
+    activate CasePhotoController
+    CasePhotoController->>CasePhotoService: uploadPhotos(caseId, request)
+    activate CasePhotoService
+    CasePhotoService->>CustomerCaseRepository: findById(caseId)
+    activate CustomerCaseRepository
+    CustomerCaseRepository-->>CasePhotoService: caseEntity
+    deactivate CustomerCaseRepository
+    CasePhotoService->>CasePhotoRepository: save(photo)
+    activate CasePhotoRepository
+    CasePhotoRepository-->>CasePhotoService: photoEntity
+    deactivate CasePhotoRepository
+    CasePhotoService-->>CasePhotoController: PhotoResponse
+    deactivate CasePhotoService
+    CasePhotoController-->>User: response (photo IDs, URLs)
+    deactivate CasePhotoController
+```
+
+## 11. Thanh toán
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant PaymentController
+    participant PaymentService
+    participant PaymentRepository
+    participant InvoiceService
+    participant InvoiceRepository
+
+    User->>PaymentController: POST /api/payments (invoiceId, paymentMethod, amount)
+    activate PaymentController
+    PaymentController->>PaymentService: createPayment(request)
+    activate PaymentService
+    PaymentService->>PaymentRepository: save(payment)
+    activate PaymentRepository
+    PaymentRepository-->>PaymentService: paymentEntity
+    deactivate PaymentRepository
+    PaymentService->>InvoiceService: updateInvoiceStatus(invoiceId, "Paid")
+    activate InvoiceService
+    InvoiceService->>InvoiceRepository: update(invoice)
+    activate InvoiceRepository
+    InvoiceRepository-->>InvoiceService: updatedInvoice
+    deactivate InvoiceRepository
+    InvoiceService-->>PaymentService: statusUpdated
+    deactivate InvoiceService
+    PaymentService-->>PaymentController: PaymentResponse
+    deactivate PaymentService
+    PaymentController-->>User: response (payment ID, status)
+    deactivate PaymentController
+```
